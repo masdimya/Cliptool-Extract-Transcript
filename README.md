@@ -20,6 +20,8 @@ pnpm start -- --input="https://youtube.com/watch?v=..." --output="/path/output"
 
 `pnpm run setup` mengunduh yt-dlp, FFmpeg/ffprobe, serta encoder dan decoder Whisper Turbo INT8 ke `.cache/`. CLI utama tidak mengunduh dependency otomatis dan akan meminta Anda menjalankan setup jika cache tidak lengkap. Jika setup gagal, CLI menampilkan konteks tahap, URL sumber, target file, dan stack trace untuk membantu diagnosis.
 
+`pnpm start` otomatis mengatur `LD_LIBRARY_PATH` untuk paket native Sherpa pada Linux, termasuk ketika dependency memakai layout `node_modules` pnpm. Anda tidak perlu mengekspor environment variable tersebut secara manual.
+
 Hasil disimpan sebagai berikut:
 
 ```text
