@@ -45,6 +45,31 @@ pnpm build
 
 Smoke test jaringan bersifat opsional karena mengunduh dependency besar dan video nyata.
 
+## Docker untuk Ubuntu 20.04
+
+Binary native Sherpa membutuhkan `GLIBC >= 2.32` dan `GLIBCXX >= 3.4.29`. Pada host Ubuntu 20.04, gunakan image Node 22 berbasis Debian Bookworm yang disertakan:
+
+```bash
+mkdir -p output
+docker compose build
+docker compose run --rm cliptool run setup
+docker compose run --rm cliptool start -- --input="https://youtube.com/watch?v=..." --output="/output"
+```
+
+Hasil tersedia di folder `./output` pada host. Model, yt-dlp, serta FFmpeg disimpan dalam named volume `cliptool-cache`, sehingga `setup` tidak perlu mengunduh ulang dependency pada setiap container baru.
+
+Untuk menyimpan hasil ke direktori host lain, berikan path absolut melalui `OUTPUT_DIR` pada command `run`:
+
+```bash
+OUTPUT_DIR="/home/user/transkrip" docker compose run --rm cliptool start -- --input="https://youtube.com/watch?v=..." --output="/output"
+```
+
+Jalankan command setup dengan `OUTPUT_DIR` yang sama hanya jika ingin memakai konfigurasi Compose yang identik; volume cache tetap sama:
+
+```bash
+OUTPUT_DIR="/home/user/transkrip" docker compose run --rm cliptool run setup
+```
+
 ## Atribusi
 
 Bagian pembacaan WAV PCM, konfigurasi `OfflineRecognizer`, sanitasi hasil native, dan konversi token ke timestamp diadaptasi dari [VidBee](../VidBee), yang dilisensikan dengan lisensi MIT. Lihat [lisensi VidBee](../VidBee/LICENSE). Modifikasi dan penyederhanaan dibuat khusus untuk CLI ini.

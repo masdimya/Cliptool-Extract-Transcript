@@ -1,0 +1,10 @@
+services:
+  cliptool:
+    build:
+      context: .
+    volumes:
+      - cliptool-cache:/app/.cache
+      - ${OUTPUT_DIR:-./output}:/output
+
+volumes:
+  cliptool-cache:
