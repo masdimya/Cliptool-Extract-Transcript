@@ -14,11 +14,11 @@ CLI mandiri Linux x64 untuk mengunduh satu video YouTube (maksimum 720p) dan mem
 
 ```bash
 pnpm install
-pnpm setup
+pnpm run setup
 pnpm start -- --input="https://youtube.com/watch?v=..." --output="/path/output"
 ```
 
-`pnpm setup` mengunduh yt-dlp, FFmpeg/ffprobe, serta encoder dan decoder Whisper Turbo INT8 ke `.cache/`. CLI utama tidak mengunduh dependency otomatis dan akan meminta Anda menjalankan setup jika cache tidak lengkap.
+`pnpm run setup` mengunduh yt-dlp, FFmpeg/ffprobe, serta encoder dan decoder Whisper Turbo INT8 ke `.cache/`. CLI utama tidak mengunduh dependency otomatis dan akan meminta Anda menjalankan setup jika cache tidak lengkap. Jika setup gagal, CLI menampilkan konteks tahap, URL sumber, target file, dan stack trace untuk membantu diagnosis.
 
 Hasil disimpan sebagai berikut:
 

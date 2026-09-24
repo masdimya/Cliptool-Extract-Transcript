@@ -9,7 +9,7 @@ import { isNonEmptyFile, nextOutputPath, slugify } from './utils.js'
 export interface PipelineDeps { recognizer?: () => Recognizer; metadata?: typeof fetchMetadata; download?: typeof downloadVideo; audio?: typeof extractAudio; setupCheck?: () => Promise<void> }
 export async function assertSetup(): Promise<void> {
   const valid = await Promise.all(REQUIRED_SETUP_FILES.map((file, index) => isNonEmptyFile(file, index < 3)))
-  if (valid.some((item) => !item)) throw new Error('Setup belum lengkap. Jalankan: pnpm setup')
+  if (valid.some((item) => !item)) throw new Error('Setup belum lengkap. Jalankan: pnpm run setup')
 }
 export async function runPipeline(input: string, output: string, signal: AbortSignal, deps: PipelineDeps = {}): Promise<string> {
   await (deps.setupCheck ?? assertSetup)()

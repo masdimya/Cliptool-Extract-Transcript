@@ -67,7 +67,7 @@ describe('setup downloader', () => {
     const root = await temp(); const file = join(root, 'bin'); await writeFile(file, 'ok'); let called = false
     expect(await ensureDownloaded(file, 'url', async () => { called = true })).toBe('skipped'); expect(called).toBe(false)
     const empty = join(root, 'empty')
-    await expect(ensureDownloaded(empty, 'url', async (_url, destination) => { await writeFile(destination, '') })).rejects.toThrow(/kosong/)
+    await expect(ensureDownloaded(empty, 'url', async (_url, destination) => { await writeFile(destination, '') })).rejects.toThrow(/Gagal menyiapkan empty/)
     await expect(readFile(`${empty}.part`)).rejects.toThrow()
   })
 })

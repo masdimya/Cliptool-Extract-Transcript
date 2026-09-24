@@ -11,7 +11,7 @@ import { isNonEmptyFile } from './utils.js'
 export type Downloader = (url: string, destination: string) => Promise<void>
 export const httpDownload: Downloader = async (url, destination) => {
   const response = await fetch(url, { redirect: 'follow' })
-  if (!response.ok || !response.body) throw new Error(`Unduhan gagal ${response.status}: ${url}`)
+  if (!response.ok || !response.body) throw new Error(`HTTP ${response.status} ${response.statusText}; URL akhir: ${response.url || url}`)
   await finished(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream).pipe(createWriteStream(destination, { flags: 'wx' })))
 }
 export async function ensureDownloaded(destination: string, url: string, downloader: Downloader = httpDownload, executable = false): Promise<'skipped' | 'downloaded'> {
@@ -19,12 +19,17 @@ export async function ensureDownloaded(destination: string, url: string, downloa
   await mkdir(dirname(destination), { recursive: true }); const part = `${destination}.part`
   await rm(part, { force: true })
   try {
+    console.error(`  Sumber: ${url}`)
+    console.error(`  Target: ${destination}`)
     await downloader(url, part)
     if (!await isNonEmptyFile(part)) throw new Error(`File unduhan kosong: ${basename(destination)}`)
     if (executable) await chmod(part, 0o755)
     await rename(part, destination)
     return 'downloaded'
-  } catch (error) { await rm(part, { force: true }); throw error }
+  } catch (error) {
+    await rm(part, { force: true })
+    throw new Error(`Gagal menyiapkan ${basename(destination)} dari ${url}`, { cause: error })
+  }
 }
 async function findFile(root: string, wanted: string): Promise<string> {
   for (const entry of await readdir(root, { withFileTypes: true })) {
@@ -37,9 +42,13 @@ async function findFile(root: string, wanted: string): Promise<string> {
 async function extractSelected(archive: string, names: string[], destination: string): Promise<void> {
   const temp = await mkdtemp(join(tmpdir(), 'minitool-extract-'))
   try {
+    console.error(`  Mengekstrak: ${archive}`)
+    console.error(`  Mempertahankan: ${names.join(', ')}`)
     await run('tar', ['-xf', archive, '-C', temp])
     await mkdir(destination, { recursive: true })
     for (const name of names) await copyFile(await findFile(temp, name), join(destination, name))
+  } catch (error) {
+    throw new Error(`Gagal mengekstrak ${archive}`, { cause: error })
   } finally { await rm(temp, { recursive: true, force: true }) }
 }
 export async function setup(): Promise<void> {
