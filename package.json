@@ -1,0 +1,25 @@
+{
+  "name": "minitool-extract-transcript",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "tsx src/cli.ts",
+    "setup": "tsx src/setup-cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "sherpa-onnx-linux-x64": "1.13.6",
+    "sherpa-onnx-node": "1.13.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "packageManager": "pnpm@10.17.1"
+}
