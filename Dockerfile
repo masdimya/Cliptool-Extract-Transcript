@@ -4,6 +4,8 @@ RUN apt-get update \
   && apt-get install --yes --no-install-recommends bzip2 ca-certificates curl xz-utils \
   && rm -rf /var/lib/apt/lists/*
 
+ENV COREPACK_HOME=/usr/local/share/corepack
+
 RUN corepack enable \
   && corepack prepare pnpm@10.17.1 --activate
 

@@ -53,8 +53,9 @@ describe('ASR conversion', () => {
 describe('external command construction', () => {
   it('bounds video quality and disables playlists', () => {
     expect(metadataArgs('url')).toContain('--no-playlist')
-    const args = downloadArgs('/safe/video.%(ext)s', 'url')
+    const args = downloadArgs('/safe/video.%(ext)s', 'url', '/cache/bin')
     expect(args).toContain('--no-playlist'); expect(args.join(' ')).toContain('height<=720'); expect(args).toContain('/safe/video.%(ext)s'); expect(args).toContain('mp4/mkv')
+    expect(args).toEqual(expect.arrayContaining(['--ffmpeg-location', '/cache/bin', '--js-runtimes', 'node']))
   })
   it('extracts 16 kHz mono PCM', () => {
     const args = ffmpegArgs('video.mp4', 'audio.wav')
