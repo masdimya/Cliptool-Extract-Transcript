@@ -18,6 +18,6 @@ export async function run(bin: string, args: string[], options: RunOptions = {})
   })
 }
 
-export async function canRun(bin: string, args = ['--version']): Promise<boolean> {
+export async function canRun(bin: string, args = ['-version']): Promise<boolean> {
   try { await run(bin, args); return true } catch { return false }
 }
