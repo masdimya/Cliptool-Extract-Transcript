@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { isYoutubeUrl, parseArgs } from '../src/args.js'
-import { parseTranscription } from '../src/asr.js'
+import { parseTranscription, transcribeArgs } from '../src/asr.js'
 import { downloadArgs, ffmpegArgs, metadataArgs } from '../src/media.js'
 import { runPipeline } from '../src/pipeline.js'
 import { ensureDownloaded } from '../src/setup.js'
@@ -15,9 +15,10 @@ afterEach(async () => { for (const path of temporary.splice(0)) await rm(path, {
 
 describe('CLI helpers', () => {
   it('parses required arguments and help', () => {
-    expect(parseArgs(['--', '--input=https://youtu.be/abc', '--output', '/tmp/out', '--cookies=cookies.txt'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out', cookies: 'cookies.txt' })
+    expect(parseArgs(['--', '--input=https://youtu.be/abc', '--output', '/tmp/out', '--cookies=cookies.txt', '--gpu'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out', cookies: 'cookies.txt', gpu: true })
     expect(parseArgs(['--help'])).toEqual({ help: true })
     expect(() => parseArgs(['--input=https://youtu.be/abc'])).toThrow(/wajib/)
+    expect(() => parseArgs(['--input=https://youtu.be/abc', '--output=/tmp/out', '--gpu=true'])).toThrow(/tidak menerima nilai/)
   })
   it('validates single YouTube URLs', () => {
     expect(isYoutubeUrl('https://www.youtube.com/watch?v=abc')).toBe(true)
@@ -60,6 +61,10 @@ describe('external command construction', () => {
   it('extracts 16 kHz mono PCM', () => {
     const args = ffmpegArgs('video.mp4', 'audio.wav')
     expect(args).toEqual(expect.arrayContaining(['-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le']))
+  })
+  it('passes optional GPU mode to Whisper', () => {
+    expect(transcribeArgs('audio.wav')).not.toContain('--gpu')
+    expect(transcribeArgs('audio.wav', true)).toContain('--gpu')
   })
 })
 

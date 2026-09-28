@@ -35,7 +35,11 @@ export function parseTranscription(value: unknown, duration: number): Segment[] 
   })
 }
 
-export async function transcribeAudio(wav: string, duration: number, signal?: AbortSignal): Promise<Segment[]> {
-  const output = await run(PYTHON_PATH, [join(PROJECT_ROOT, 'scripts', 'transcribe.py'), wav, MODEL_DIR], { signal })
+export const transcribeArgs = (wav: string, gpu = false): string[] => [
+  join(PROJECT_ROOT, 'scripts', 'transcribe.py'), wav, MODEL_DIR, ...(gpu ? ['--gpu'] : [])
+]
+
+export async function transcribeAudio(wav: string, duration: number, signal?: AbortSignal, gpu = false): Promise<Segment[]> {
+  const output = await run(PYTHON_PATH, transcribeArgs(wav, gpu), { signal })
   return parseTranscription(JSON.parse(output) as unknown, duration)
 }

@@ -40,7 +40,7 @@ output/
 
 Folder yang sudah ada tidak ditimpa; nama berikutnya memakai akhiran `-2`, `-3`, dan seterusnya. Proses yang gagal atau dihentikan membersihkan direktori staging, tetapi mempertahankan cache setup.
 
-Opsi CLI hanya `--input`, `--output`, `--cookies`, dan `--help`. Playlist, video privat/login interaktif, dan proxy tidak didukung.
+Opsi CLI hanya `--input`, `--output`, `--cookies`, `--gpu`, dan `--help`. Gunakan `--gpu` hanya di host dengan CUDA yang siap dipakai faster-whisper. Playlist, video privat/login interaktif, dan proxy tidak didukung.
 
 ## Pengembangan
 

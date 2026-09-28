@@ -7,7 +7,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => 
 try {
   const args = parseArgs(process.argv.slice(2))
   if ('help' in args) { console.log(HELP) } else {
-    const result = await runPipeline(args.input, args.output, abort.signal, {}, args.cookies)
+    const result = await runPipeline(args.input, args.output, abort.signal, {}, args.cookies, args.gpu)
     console.log(`Selesai: ${result}`)
   }
 } catch (error) { console.error(`Gagal: ${error instanceof Error ? error.message : String(error)}`); process.exitCode = 1 }

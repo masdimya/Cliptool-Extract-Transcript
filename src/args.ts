@@ -1,12 +1,13 @@
-export interface CliArgs { input: string; output: string; cookies?: string }
+export interface CliArgs { input: string; output: string; cookies?: string; gpu: boolean }
 
 export const HELP = `Penggunaan:
-  pnpm start -- --input=<youtube_link> --output=<output_path> [--cookies=<cookies_txt>]
+  pnpm start -- --input=<youtube_link> --output=<output_path> [--cookies=<cookies_txt>] [--gpu]
 
 Opsi:
   --input=<youtube_link>   Wajib; URL video YouTube tunggal
   --output=<output_path>   Wajib; direktori induk hasil
   --cookies=<cookies_txt>  Opsional; file cookies format Netscape untuk yt-dlp
+  --gpu                    Opsional; jalankan Whisper dengan CUDA
   --help                   Tampilkan bantuan`
 
 export function isYoutubeUrl(value: string): boolean {
@@ -23,7 +24,7 @@ export function isYoutubeUrl(value: string): boolean {
 
 export function parseArgs(argv: string[]): CliArgs | { help: true } {
   if (argv.includes('--help')) return { help: true }
-  const allowed = new Set(['--input', '--output', '--cookies'])
+  const allowed = new Set(['--input', '--output', '--cookies', '--gpu'])
   const values = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index] ?? ''
@@ -31,6 +32,12 @@ export function parseArgs(argv: string[]): CliArgs | { help: true } {
     const equals = item.indexOf('=')
     const key = equals >= 0 ? item.slice(0, equals) : item
     if (!allowed.has(key)) throw new Error(`Argumen tidak dikenal: ${item}`)
+    if (key === '--gpu') {
+      if (equals >= 0) throw new Error('--gpu tidak menerima nilai')
+      if (values.has(key)) throw new Error(`Argumen duplikat: ${key}`)
+      values.set(key, '1')
+      continue
+    }
     const value = equals >= 0 ? item.slice(equals + 1) : argv[++index]
     if (!value || value.startsWith('--')) throw new Error(`Nilai wajib untuk ${key}`)
     if (values.has(key)) throw new Error(`Argumen duplikat: ${key}`)
@@ -41,5 +48,5 @@ export function parseArgs(argv: string[]): CliArgs | { help: true } {
   if (!input || !output) throw new Error('--input dan --output wajib diberikan')
   if (!isYoutubeUrl(input)) throw new Error('--input harus berupa URL video YouTube')
   const cookies = values.get('--cookies')
-  return cookies ? { input, output, cookies } : { input, output }
+  return cookies ? { input, output, cookies, gpu: values.has('--gpu') } : { input, output, gpu: values.has('--gpu') }
 }

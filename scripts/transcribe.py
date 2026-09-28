@@ -6,17 +6,19 @@ from faster_whisper import WhisperModel
 
 def main():
     audio, model_dir = sys.argv[1:3]
+    gpu = "--gpu" in sys.argv[3:]
+    device = "cuda" if gpu else "cpu"
     model = WhisperModel(
         "turbo",
-        device="cpu",
-        compute_type="int8",
+        device=device,
+        compute_type="float16" if gpu else "int8",
         download_root=model_dir,
         local_files_only=audio != "--setup",
     )
     if audio == "--setup":
         return
 
-    segments, _ = model.transcribe(
+    segments, info = model.transcribe(
         audio,
         word_timestamps=True,
         vad_filter=True,
@@ -24,7 +26,14 @@ def main():
         condition_on_previous_text=False,
     )
     result = []
+    duration = max(float(getattr(info, "duration", 0) or 0), 0.001)
+    next_progress = 0
+    print("Whisper progress: 0%", file=sys.stderr, flush=True)
     for segment in segments:
+        progress = min(100, int((segment.end or 0) / duration * 100))
+        if progress >= next_progress:
+            print(f"Whisper progress: {progress}%", file=sys.stderr, flush=True)
+            next_progress = progress + 5
         if not segment.text.strip():
             continue
         words = [
@@ -34,6 +43,7 @@ def main():
         if not words or any(word["start"] is None or word["end"] is None for word in words):
             raise ValueError(f"Ujaran tanpa timestamp kata: {segment.text[:80]}")
         result.append({"text": segment.text, "words": words})
+    print("Whisper progress: 100%", file=sys.stderr, flush=True)
     json.dump(result, sys.stdout, ensure_ascii=False)
 
 
