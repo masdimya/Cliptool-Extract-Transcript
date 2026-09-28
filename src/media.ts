@@ -4,7 +4,7 @@ import { FFMPEG_PATH } from './constants.js'
 import { run } from './process.js'
 
 export interface VideoMetadata { title: string; id: string; duration: number }
-export const metadataArgs = (url: string, cookies?: string): string[] => ['--no-playlist', '--no-warnings', ...(cookies ? ['--cookies', cookies] : []), '--dump-single-json', url]
+export const metadataArgs = (url: string, cookies?: string): string[] => ['--no-playlist', '--no-warnings', '--js-runtimes', 'node', ...(cookies ? ['--cookies', cookies] : []), '--dump-single-json', url]
 export const downloadArgs = (outputTemplate: string, url: string, ffmpegDirectory?: string, cookies?: string): string[] => [
   '--no-playlist', '--newline', '--progress', '--js-runtimes', 'node', ...(cookies ? ['--cookies', cookies] : []),
   ...(ffmpegDirectory ? ['--ffmpeg-location', ffmpegDirectory] : []),
