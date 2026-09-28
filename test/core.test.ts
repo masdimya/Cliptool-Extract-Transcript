@@ -15,7 +15,7 @@ afterEach(async () => { for (const path of temporary.splice(0)) await rm(path, {
 
 describe('CLI helpers', () => {
   it('parses required arguments and help', () => {
-    expect(parseArgs(['--input=https://youtu.be/abc', '--output', '/tmp/out', '--cookies=cookies.txt'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out', cookies: 'cookies.txt' })
+    expect(parseArgs(['--', '--input=https://youtu.be/abc', '--output', '/tmp/out', '--cookies=cookies.txt'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out', cookies: 'cookies.txt' })
     expect(parseArgs(['--help'])).toEqual({ help: true })
     expect(() => parseArgs(['--input=https://youtu.be/abc'])).toThrow(/wajib/)
   })

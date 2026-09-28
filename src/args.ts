@@ -27,6 +27,7 @@ export function parseArgs(argv: string[]): CliArgs | { help: true } {
   const values = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index] ?? ''
+    if (item === '--') continue
     const equals = item.indexOf('=')
     const key = equals >= 0 ? item.slice(0, equals) : item
     if (!allowed.has(key)) throw new Error(`Argumen tidak dikenal: ${item}`)
