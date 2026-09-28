@@ -40,6 +40,6 @@ export const transcribeArgs = (wav: string, gpu = false): string[] => [
 ]
 
 export async function transcribeAudio(wav: string, duration: number, signal?: AbortSignal, gpu = false): Promise<Segment[]> {
-  const output = await run(PYTHON_PATH, transcribeArgs(wav, gpu), { signal })
+  const output = await run(PYTHON_PATH, transcribeArgs(wav, gpu), { signal, teeStderr: true })
   return parseTranscription(JSON.parse(output) as unknown, duration)
 }

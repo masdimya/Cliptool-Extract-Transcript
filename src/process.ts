@@ -1,12 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 
-export interface RunOptions { signal?: AbortSignal; cwd?: string; inherit?: boolean }
+export interface RunOptions { signal?: AbortSignal; cwd?: string; inherit?: boolean; teeStderr?: boolean }
 export async function run(bin: string, args: string[], options: RunOptions = {}): Promise<string> {
   return await new Promise((resolve, reject) => {
     const child: ChildProcess = spawn(bin, args, { cwd: options.cwd, stdio: options.inherit ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'pipe'] })
     let stdout = ''; let stderr = ''
     child.stdout?.on('data', (data: Buffer) => { stdout += data.toString() })
-    child.stderr?.on('data', (data: Buffer) => { stderr += data.toString() })
+    child.stderr?.on('data', (data: Buffer) => { stderr += data.toString(); if (options.teeStderr) process.stderr.write(data) })
     const abort = (): void => { child.kill('SIGTERM') }
     options.signal?.addEventListener('abort', abort, { once: true })
     child.once('error', reject)

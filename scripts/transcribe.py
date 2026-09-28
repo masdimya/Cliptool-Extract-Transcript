@@ -8,6 +8,8 @@ def main():
     audio, model_dir = sys.argv[1:3]
     gpu = "--gpu" in sys.argv[3:]
     device = "cuda" if gpu else "cpu"
+    if audio != "--setup":
+        print(f"Whisper device: {device}", file=sys.stderr, flush=True)
     model = WhisperModel(
         "turbo",
         device=device,
