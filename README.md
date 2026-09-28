@@ -12,7 +12,7 @@ CLI untuk mengunduh satu video YouTube (maksimum 720p) dan membuat transkrip lok
 
 ```bash
 pnpm run setup
-pnpm start -- --input="https://youtube.com/watch?v=..." --output="./output"
+pnpm start -- --input="https://youtube.com/watch?v=..." --output="./output" --cookies="./cookies.txt"
 ```
 
 Tanpa Docker, host perlu Node 22, pnpm, Python 3.11, dan FFmpeg/ffprobe. `pnpm run setup` membuat venv lokal di `.cache`, mengunduh yt-dlp, dan mengunduh model Whisper Turbo.
@@ -40,7 +40,7 @@ output/
 
 Folder yang sudah ada tidak ditimpa; nama berikutnya memakai akhiran `-2`, `-3`, dan seterusnya. Proses yang gagal atau dihentikan membersihkan direktori staging, tetapi mempertahankan cache setup.
 
-Opsi CLI hanya `--input`, `--output`, dan `--help`. Playlist, video privat/login, cookie, dan proxy tidak didukung.
+Opsi CLI hanya `--input`, `--output`, `--cookies`, dan `--help`. Playlist, video privat/login interaktif, dan proxy tidak didukung.
 
 ## Pengembangan
 

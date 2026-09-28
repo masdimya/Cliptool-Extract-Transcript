@@ -1,11 +1,12 @@
-export interface CliArgs { input: string; output: string }
+export interface CliArgs { input: string; output: string; cookies?: string }
 
 export const HELP = `Penggunaan:
-  pnpm start -- --input=<youtube_link> --output=<output_path>
+  pnpm start -- --input=<youtube_link> --output=<output_path> [--cookies=<cookies_txt>]
 
 Opsi:
   --input=<youtube_link>   Wajib; URL video YouTube tunggal
   --output=<output_path>   Wajib; direktori induk hasil
+  --cookies=<cookies_txt>  Opsional; file cookies format Netscape untuk yt-dlp
   --help                   Tampilkan bantuan`
 
 export function isYoutubeUrl(value: string): boolean {
@@ -22,7 +23,7 @@ export function isYoutubeUrl(value: string): boolean {
 
 export function parseArgs(argv: string[]): CliArgs | { help: true } {
   if (argv.includes('--help')) return { help: true }
-  const allowed = new Set(['--input', '--output'])
+  const allowed = new Set(['--input', '--output', '--cookies'])
   const values = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index] ?? ''
@@ -38,5 +39,6 @@ export function parseArgs(argv: string[]): CliArgs | { help: true } {
   const output = values.get('--output')
   if (!input || !output) throw new Error('--input dan --output wajib diberikan')
   if (!isYoutubeUrl(input)) throw new Error('--input harus berupa URL video YouTube')
-  return { input, output }
+  const cookies = values.get('--cookies')
+  return cookies ? { input, output, cookies } : { input, output }
 }

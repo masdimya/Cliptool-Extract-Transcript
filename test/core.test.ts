@@ -15,7 +15,7 @@ afterEach(async () => { for (const path of temporary.splice(0)) await rm(path, {
 
 describe('CLI helpers', () => {
   it('parses required arguments and help', () => {
-    expect(parseArgs(['--input=https://youtu.be/abc', '--output', '/tmp/out'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out' })
+    expect(parseArgs(['--input=https://youtu.be/abc', '--output', '/tmp/out', '--cookies=cookies.txt'])).toEqual({ input: 'https://youtu.be/abc', output: '/tmp/out', cookies: 'cookies.txt' })
     expect(parseArgs(['--help'])).toEqual({ help: true })
     expect(() => parseArgs(['--input=https://youtu.be/abc'])).toThrow(/wajib/)
   })
@@ -53,6 +53,8 @@ describe('external command construction', () => {
     const args = downloadArgs('/safe/video.%(ext)s', 'url', '/cache/bin')
     expect(args).toContain('--no-playlist'); expect(args.join(' ')).toContain('height<=720'); expect(args).toContain('/safe/video.%(ext)s'); expect(args).toContain('mp4/mkv')
     expect(args).toEqual(expect.arrayContaining(['--ffmpeg-location', '/cache/bin', '--js-runtimes', 'node']))
+    expect(metadataArgs('url', 'cookies.txt')).toEqual(expect.arrayContaining(['--cookies', 'cookies.txt']))
+    expect(downloadArgs('/safe/video.%(ext)s', 'url', undefined, 'cookies.txt')).toEqual(expect.arrayContaining(['--cookies', 'cookies.txt']))
   })
   it('extracts 16 kHz mono PCM', () => {
     const args = ffmpegArgs('video.mp4', 'audio.wav')

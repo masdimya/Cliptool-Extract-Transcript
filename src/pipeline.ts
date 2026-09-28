@@ -12,14 +12,14 @@ export async function assertSetup(): Promise<void> {
   const valid = await Promise.all(REQUIRED_SETUP_FILES.map((file, index) => isNonEmptyFile(file, index < 2)))
   if (valid.some((item) => !item) || !await canRun(FFMPEG_PATH) || !await canRun(FFPROBE_PATH)) throw new Error('Setup belum lengkap. Jalankan: pnpm run setup')
 }
-export async function runPipeline(input: string, output: string, signal: AbortSignal, deps: PipelineDeps = {}): Promise<string> {
+export async function runPipeline(input: string, output: string, signal: AbortSignal, deps: PipelineDeps = {}, cookies?: string): Promise<string> {
   await (deps.setupCheck ?? assertSetup)()
-  const metadata = await (deps.metadata ?? fetchMetadata)(YTDLP_PATH, input, signal)
+  const metadata = await (deps.metadata ?? fetchMetadata)(YTDLP_PATH, input, signal, cookies)
   const outputParent = resolve(output); const finalPath = await nextOutputPath(outputParent, slugify(metadata.title, metadata.id))
   const staging = `${finalPath}.staging-${process.pid}-${Date.now()}`; await mkdir(staging, { recursive: true })
   try {
     console.error('Mengunduh video (maksimum 720p)...')
-    const video = await (deps.download ?? downloadVideo)(YTDLP_PATH, input, staging, signal)
+    const video = await (deps.download ?? downloadVideo)(YTDLP_PATH, input, staging, signal, cookies)
     const wav = `${staging}/audio.wav`; console.error('Mengekstrak audio 16 kHz mono...'); await (deps.audio ?? extractAudio)(FFMPEG_PATH, video, wav, signal)
     const wave = await readPcmWav(wav); const duration = wave.samples.length / wave.sampleRate
     console.error('Mentranskripsikan dengan Whisper Turbo INT8 dan timestamp per kata...')
