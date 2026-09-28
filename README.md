@@ -1,13 +1,23 @@
 # Minitool Extract Transcript
 
-CLI Docker untuk mengunduh satu video YouTube (maksimum 720p) dan membuat transkrip lokal memakai Whisper Turbo INT8 melalui faster-whisper. Semua inferensi berjalan di CPU dalam container; video dan audio tidak dikirim ke layanan transkripsi.
+CLI untuk mengunduh satu video YouTube (maksimum 720p) dan membuat transkrip lokal memakai Whisper Turbo INT8 melalui faster-whisper. Bisa dijalankan langsung di host atau lewat Docker; video dan audio tidak dikirim ke layanan transkripsi.
 
 ## Persyaratan
 
-- Docker dan Docker Compose pada Linux x64
+- Node 22, pnpm, Python 3.11, dan FFmpeg/ffprobe
+- Docker dan Docker Compose pada Linux x64 jika memakai mode Docker
 - Ruang disk yang cukup untuk model Whisper Turbo dan video
 
 ## Instalasi dan penggunaan
+
+```bash
+pnpm run setup
+pnpm start -- --input="https://youtube.com/watch?v=..." --output="./output"
+```
+
+Tanpa Docker, host perlu Node 22, pnpm, Python 3.11, dan FFmpeg/ffprobe. `pnpm run setup` membuat venv lokal di `.cache`, mengunduh yt-dlp, dan mengunduh model Whisper Turbo.
+
+Docker tetap bisa dipakai sebagai alternatif saat host belum punya dependency native:
 
 ```bash
 docker compose build
@@ -15,7 +25,7 @@ docker compose run --rm cliptool run setup
 docker compose run --rm cliptool start -- --input="https://youtube.com/watch?v=..." --output="/output"
 ```
 
-Image Docker menyediakan FFmpeg, Python, dan faster-whisper. `run setup` mengunduh yt-dlp dan model Whisper Turbo ke volume cache. Perintah setup dan transkripsi menolak dijalankan di luar Docker.
+Image Docker menyediakan FFmpeg, Python, dan faster-whisper.
 
 `transcript.json` berisi ujaran dengan `words` bertimestamp per kata. Waktu kata berasal dari model dan tetap perlu dicek terhadap audio sebelum menentukan batas klip final.
 

@@ -3,8 +3,8 @@ import { createWriteStream } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { finished } from 'node:stream/promises'
-import { FFMPEG_PATH, FFPROBE_PATH, MODEL_DIR, MODEL_READY_PATH, PROJECT_ROOT, PYTHON_PATH, YTDLP_PATH, YTDLP_URL } from './constants.js'
-import { run } from './process.js'
+import { FFMPEG_PATH, FFPROBE_PATH, IS_DOCKER, MODEL_DIR, MODEL_READY_PATH, PROJECT_ROOT, PYTHON_PATH, VENV_DIR, YTDLP_PATH, YTDLP_URL } from './constants.js'
+import { canRun, run } from './process.js'
 import { isNonEmptyFile } from './utils.js'
 
 export type Downloader = (url: string, destination: string) => Promise<void>
@@ -31,8 +31,11 @@ export async function ensureDownloaded(destination: string, url: string, downloa
   }
 }
 export async function setup(): Promise<void> {
-  if (process.env.CLIPTOOL_DOCKER !== '1') throw new Error('Whisper hanya dijalankan lewat Docker; gunakan docker compose run')
-  if (!await isNonEmptyFile(FFMPEG_PATH, true) || !await isNonEmptyFile(FFPROBE_PATH, true)) throw new Error('FFmpeg/ffprobe tidak tersedia dalam image Docker')
+  if (!await canRun(FFMPEG_PATH) || !await canRun(FFPROBE_PATH)) throw new Error('FFmpeg/ffprobe tidak tersedia')
+  if (!IS_DOCKER) {
+    if (!await isNonEmptyFile(PYTHON_PATH, true)) await run('python3.11', ['-m', 'venv', VENV_DIR], { inherit: true })
+    await run(PYTHON_PATH, ['-m', 'pip', 'install', '--upgrade', 'faster-whisper==1.2.1'], { inherit: true })
+  }
   console.error('Menyiapkan yt-dlp...'); await ensureDownloaded(YTDLP_PATH, YTDLP_URL, httpDownload, true)
   if (!await isNonEmptyFile(MODEL_READY_PATH)) {
     console.error('Mengunduh model Whisper Turbo...')
@@ -40,6 +43,6 @@ export async function setup(): Promise<void> {
     await run(PYTHON_PATH, [join(PROJECT_ROOT, 'scripts', 'transcribe.py'), '--setup', MODEL_DIR], { inherit: true })
     await writeFile(MODEL_READY_PATH, 'turbo\n')
   }
-  for (const path of [YTDLP_PATH, FFMPEG_PATH, FFPROBE_PATH, PYTHON_PATH, MODEL_READY_PATH]) if ((await stat(path)).size === 0) throw new Error(`Setup menghasilkan file kosong: ${path}`)
+  for (const path of [YTDLP_PATH, PYTHON_PATH, MODEL_READY_PATH]) if ((await stat(path)).size === 0) throw new Error(`Setup menghasilkan file kosong: ${path}`)
   console.error('Setup selesai.')
 }

@@ -2,15 +2,15 @@ import { mkdir, rename, rm, unlink, writeFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { readPcmWav } from './audio.js'
 import { transcribeAudio } from './asr.js'
-import { FFMPEG_PATH, REQUIRED_SETUP_FILES, YTDLP_PATH } from './constants.js'
+import { FFMPEG_PATH, FFPROBE_PATH, REQUIRED_SETUP_FILES, YTDLP_PATH } from './constants.js'
 import { downloadVideo, extractAudio, fetchMetadata } from './media.js'
+import { canRun } from './process.js'
 import { isNonEmptyFile, nextOutputPath, slugify } from './utils.js'
 
 export interface PipelineDeps { transcribe?: typeof transcribeAudio; metadata?: typeof fetchMetadata; download?: typeof downloadVideo; audio?: typeof extractAudio; setupCheck?: () => Promise<void> }
 export async function assertSetup(): Promise<void> {
-  if (process.env.CLIPTOOL_DOCKER !== '1') throw new Error('Whisper hanya dijalankan lewat Docker; gunakan docker compose run')
-  const valid = await Promise.all(REQUIRED_SETUP_FILES.map((file, index) => isNonEmptyFile(file, index < 4)))
-  if (valid.some((item) => !item)) throw new Error('Setup belum lengkap. Jalankan: pnpm run setup')
+  const valid = await Promise.all(REQUIRED_SETUP_FILES.map((file, index) => isNonEmptyFile(file, index < 2)))
+  if (valid.some((item) => !item) || !await canRun(FFMPEG_PATH) || !await canRun(FFPROBE_PATH)) throw new Error('Setup belum lengkap. Jalankan: pnpm run setup')
 }
 export async function runPipeline(input: string, output: string, signal: AbortSignal, deps: PipelineDeps = {}): Promise<string> {
   await (deps.setupCheck ?? assertSetup)()

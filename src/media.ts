@@ -19,7 +19,7 @@ export async function fetchMetadata(ytdlp: string, url: string, signal?: AbortSi
   return { title: data.title, id: data.id, duration: typeof data.duration === 'number' ? data.duration : 0 }
 }
 export async function downloadVideo(ytdlp: string, url: string, directory: string, signal?: AbortSignal): Promise<string> {
-  await run(ytdlp, downloadArgs(join(directory, 'video.%(ext)s'), url, dirname(FFMPEG_PATH)), { signal, inherit: true })
+  await run(ytdlp, downloadArgs(join(directory, 'video.%(ext)s'), url, FFMPEG_PATH.includes('/') ? dirname(FFMPEG_PATH) : undefined), { signal, inherit: true })
   const files = (await readdir(directory)).filter((name) => /^video\.(mp4|mkv|webm|mov)$/i.test(name))
   if (!files[0]) throw new Error('yt-dlp tidak menghasilkan file video')
   return join(directory, files[0])
