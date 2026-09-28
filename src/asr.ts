@@ -1,69 +1,41 @@
-import { createRequire } from 'node:module'
-import { DECODER_PATH, ENCODER_PATH, TOKENS_PATH } from './constants.js'
+import { join } from 'node:path'
+import { MODEL_DIR, PROJECT_ROOT, PYTHON_PATH } from './constants.js'
+import { run } from './process.js'
 import { formatTimestamp } from './utils.js'
 
-export const MAX_CHUNK_SECONDS = 15
-export interface NativeResult { text?: string; tokens?: string[]; timestamps?: number[]; durations?: number[] }
 export interface Word { startSeconds: number; endSeconds: number; text: string }
 export interface Segment { index: number; startSeconds: number; endSeconds: number; startTime: string; endTime: string; text: string; words: Word[] }
-export interface Recognizer { createStream(): { acceptWaveform(input: { sampleRate: number; samples: Float32Array }): void; inputFinished?(): void }; decode(stream: unknown): void; getResult(stream: unknown): NativeResult }
 
-export function withSanitizedJson<T>(callback: () => T): T {
-  const original = JSON.parse
-  JSON.parse = ((text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
-    try { return original(text, reviver) }
-    catch (error) {
-      if (!(error instanceof SyntaxError)) throw error
-      let output = ''; let quoted = false; let escaped = false
-      for (const character of text) {
-        if (!quoted) { if (character === '"') quoted = true; output += character; continue }
-        if (escaped) { output += character; escaped = false; continue }
-        if (character === '\\') { output += character; escaped = true; continue }
-        if (character === '"') { quoted = false; output += character; continue }
-        const code = character.charCodeAt(0); output += code <= 31 ? `\\u${code.toString(16).padStart(4, '0')}` : character
-      }
-      return original(output, reviver)
+interface RawWord { start: number; end: number; word: string }
+interface RawSegment { text: string; words: RawWord[] }
+
+export function parseTranscription(value: unknown, duration: number): Segment[] {
+  if (!Array.isArray(value)) throw new Error('Hasil transkripsi harus berupa array')
+  let previousStart = 0
+  return value.map((item: RawSegment, index) => {
+    if (typeof item?.text !== 'string' || !item.text.trim() || !Array.isArray(item.words) || !item.words.length) {
+      throw new Error(`Ujaran ${index + 1} tidak memiliki teks atau timestamp kata`)
     }
-  }) as typeof JSON.parse
-  try { return callback() } finally { JSON.parse = original }
+    let previousWordStart = 0
+    const words = item.words.map((word, wordIndex) => {
+      const { start, end } = word ?? {}
+      if (typeof word?.word !== 'string' || !word.word.trim() || !Number.isFinite(start) || !Number.isFinite(end) ||
+        start < 0 || end <= start || end > duration + 0.1 || start < previousWordStart) {
+        throw new Error(`Timestamp kata ${wordIndex + 1} pada ujaran ${index + 1} tidak valid`)
+      }
+      previousWordStart = start
+      return { startSeconds: start, endSeconds: end, text: word.word.trim() }
+    })
+    const startSeconds = words[0].startSeconds
+    const endSeconds = Math.max(...words.map((word) => word.endSeconds))
+    if (startSeconds < previousStart) throw new Error(`Urutan ujaran ${index + 1} tidak valid`)
+    previousStart = startSeconds
+    return { index: index + 1, startSeconds, endSeconds, startTime: formatTimestamp(startSeconds),
+      endTime: formatTimestamp(endSeconds), text: item.text.trim(), words }
+  })
 }
 
-const normalizeToken = (token: string): string => token.replace(/^▁/u, ' ')
-const CJK = /[\u4e00-\u9fff]/u
-const PUNCTUATION = /^[^\s\u4e00-\u9fffA-Za-z0-9]+$/u
-export function wordsFromResult(result: NativeResult, start: number, end: number): Word[] {
-  const tokens = result.tokens ?? []; const timestamps = result.timestamps ?? []
-  if (!tokens.length || tokens.length !== timestamps.length) return []
-  const groups: Array<{ startSeconds: number; text: string }> = []
-  for (const [index, token] of tokens.entries()) {
-    const normalized = normalizeToken(token); const trimmed = normalized.trim(); const last = groups.at(-1)
-    const newWord = !last || normalized.startsWith(' ') || normalized.startsWith('\n') || (Boolean(trimmed) && !PUNCTUATION.test(trimmed) && CJK.test(trimmed))
-    const tokenStart = Math.max(start, Math.min(end, start + (timestamps[index] ?? 0)))
-    if (newWord) groups.push({ startSeconds: tokenStart, text: normalized })
-    else if (last) last.text += normalized
-  }
-  return groups.filter((group) => group.text.trim()).map((group, index) => ({
-    startSeconds: group.startSeconds,
-    endSeconds: Math.max(group.startSeconds + 0.001, Math.min(end, groups[index + 1]?.startSeconds ?? end)),
-    text: group.text.trim()
-  }))
-}
-
-export function transcribeSamples(recognizer: Recognizer, samples: Float32Array, sampleRate: number, progress?: (done: number, total: number) => void, signal?: AbortSignal): Segment[] {
-  const chunkSize = sampleRate * MAX_CHUNK_SECONDS; const total = Math.max(1, Math.ceil(samples.length / chunkSize)); const segments: Segment[] = []
-  for (let offset = 0, chunkIndex = 0; offset < samples.length; offset += chunkSize, chunkIndex += 1) {
-    if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Proses dibatalkan')
-    const endOffset = Math.min(samples.length, offset + chunkSize); const start = offset / sampleRate; const end = endOffset / sampleRate
-    const stream = recognizer.createStream(); stream.acceptWaveform({ sampleRate, samples: samples.subarray(offset, endOffset) }); stream.inputFinished?.(); recognizer.decode(stream)
-    const result = withSanitizedJson(() => recognizer.getResult(stream)); const text = (result.text ?? '').replace(/[\u0000-\u001f]+/g, ' ').trim()
-    if (text) segments.push({ index: segments.length + 1, startSeconds: start, endSeconds: end, startTime: formatTimestamp(start), endTime: formatTimestamp(end), text, words: wordsFromResult(result, start, end) })
-    progress?.(chunkIndex + 1, total)
-  }
-  return segments
-}
-
-export function createRecognizer(): Recognizer {
-  const require = createRequire(import.meta.url)
-  const addon = require('sherpa-onnx-node') as { OfflineRecognizer: new (config: Record<string, unknown>) => Recognizer }
-  return new addon.OfflineRecognizer({ featConfig: { sampleRate: 16000, featureDim: 80 }, modelConfig: { whisper: { encoder: ENCODER_PATH, decoder: DECODER_PATH, language: '', task: 'transcribe', tailPaddings: -1 }, tokens: TOKENS_PATH, numThreads: 2, provider: 'cpu', debug: 0 } })
+export async function transcribeAudio(wav: string, duration: number, signal?: AbortSignal): Promise<Segment[]> {
+  const output = await run(PYTHON_PATH, [join(PROJECT_ROOT, 'scripts', 'transcribe.py'), wav, MODEL_DIR], { signal })
+  return parseTranscription(JSON.parse(output) as unknown, duration)
 }

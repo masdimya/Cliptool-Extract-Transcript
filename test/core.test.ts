@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { isYoutubeUrl, parseArgs } from '../src/args.js'
-import { MAX_CHUNK_SECONDS, transcribeSamples, wordsFromResult, type Recognizer } from '../src/asr.js'
+import { parseTranscription } from '../src/asr.js'
 import { downloadArgs, ffmpegArgs, metadataArgs } from '../src/media.js'
 import { runPipeline } from '../src/pipeline.js'
 import { ensureDownloaded } from '../src/setup.js'
@@ -36,17 +36,14 @@ describe('CLI helpers', () => {
 })
 
 describe('ASR conversion', () => {
-  it('converts relative tokens to absolute word timestamps', () => {
-    expect(wordsFromResult({ tokens: ['▁Hello', ',', '▁world'], timestamps: [0.2, 0.5, 0.8] }, 10, 12)).toEqual([
-      { startSeconds: 10.2, endSeconds: 10.8, text: 'Hello,' }, { startSeconds: 10.8, endSeconds: 12, text: 'world' }
-    ])
-    expect(wordsFromResult({ text: 'fallback' }, 0, 1)).toEqual([])
-  })
-  it('chunks at no more than 15 seconds and omits empty results', () => {
-    let calls = 0
-    const recognizer: Recognizer = { createStream: () => ({ acceptWaveform: ({ samples }) => expect(samples.length).toBeLessThanOrEqual(16000 * MAX_CHUNK_SECONDS) }), decode: () => {}, getResult: () => ({ text: calls++ === 0 ? 'one' : '' }) }
-    const segments = transcribeSamples(recognizer, new Float32Array(16000 * 16), 16000)
-    expect(calls).toBe(2); expect(segments).toHaveLength(1); expect(segments[0]?.words).toEqual([])
+  it('keeps real word timestamps and rejects missing or invalid timings', () => {
+    const input = [{ text: 'Hello world.', words: [{ start: 0.2, end: 0.5, word: 'Hello' }, { start: 0.8, end: 1.1, word: 'world.' }] }]
+    expect(parseTranscription(input, 2)).toEqual([{
+      index: 1, startSeconds: 0.2, endSeconds: 1.1, startTime: '00:00:00.200', endTime: '00:00:01.100',
+      text: 'Hello world.', words: [{ startSeconds: 0.2, endSeconds: 0.5, text: 'Hello' }, { startSeconds: 0.8, endSeconds: 1.1, text: 'world.' }]
+    }])
+    expect(() => parseTranscription([{ text: 'Hello', words: [] }], 2)).toThrow(/timestamp kata/)
+    expect(() => parseTranscription([{ text: 'Hello', words: [{ start: 2, end: 3, word: 'Hello' }] }], 2)).toThrow(/tidak valid/)
   })
 })
 
@@ -76,15 +73,15 @@ describe('setup downloader', () => {
 describe('pipeline integration', () => {
   it('creates the stable output schema using mocked tools', async () => {
     const root = await temp()
-    const recognizer: Recognizer = { createStream: () => ({ acceptWaveform: () => {} }), decode: () => {}, getResult: () => ({ text: 'Halo dunia', tokens: ['▁Halo', '▁dunia'], timestamps: [0, 0.4] }) }
     const result = await runPipeline('https://youtu.be/id123', root, new AbortController().signal, {
       setupCheck: async () => {}, metadata: async () => ({ title: 'Judul Café', id: 'id123', duration: 1 }),
       download: async (_bin, _url, directory) => { const path = join(directory, 'video.mp4'); await writeFile(path, 'video'); return path },
-      audio: async (_bin, _video, wav) => { const buffer = Buffer.alloc(44 + 32000); buffer.write('RIFF'); buffer.writeUInt32LE(buffer.length - 8, 4); buffer.write('WAVEfmt ', 8); buffer.writeUInt32LE(16, 16); buffer.writeUInt16LE(1, 20); buffer.writeUInt16LE(1, 22); buffer.writeUInt32LE(16000, 24); buffer.writeUInt32LE(32000, 28); buffer.writeUInt16LE(2, 32); buffer.writeUInt16LE(16, 34); buffer.write('data', 36); buffer.writeUInt32LE(32000, 40); await writeFile(wav, buffer) }, recognizer: () => recognizer
+      audio: async (_bin, _video, wav) => { const buffer = Buffer.alloc(44 + 32000); buffer.write('RIFF'); buffer.writeUInt32LE(buffer.length - 8, 4); buffer.write('WAVEfmt ', 8); buffer.writeUInt32LE(16, 16); buffer.writeUInt16LE(1, 20); buffer.writeUInt16LE(1, 22); buffer.writeUInt32LE(16000, 24); buffer.writeUInt32LE(32000, 28); buffer.writeUInt16LE(2, 32); buffer.writeUInt16LE(16, 34); buffer.write('data', 36); buffer.writeUInt32LE(32000, 40); await writeFile(wav, buffer) },
+      transcribe: async () => parseTranscription([{ text: 'Halo dunia', words: [{ start: 0.1, end: 0.4, word: 'Halo' }, { start: 0.5, end: 0.9, word: 'dunia' }] }], 1)
     })
     expect(result).toBe(join(root, 'judul-cafe'))
     const json = JSON.parse(await readFile(join(result, 'transcript.json'), 'utf8'))
-    expect(json).toMatchObject({ version: 1, source: { youtubeId: 'id123', videoFile: 'video.mp4' }, model: { quantization: 'int8' } })
-    expect(json.segments[0]).toMatchObject({ index: 1, text: 'Halo dunia', startTime: '00:00:00.000' })
+    expect(json).toMatchObject({ version: 1, source: { youtubeId: 'id123', videoFile: 'video.mp4' }, model: { backend: 'faster-whisper', quantization: 'int8' } })
+    expect(json.segments[0]).toMatchObject({ index: 1, text: 'Halo dunia', startTime: '00:00:00.100', words: [{ text: 'Halo', startSeconds: 0.1 }, { text: 'dunia', startSeconds: 0.5 }] })
   })
 })

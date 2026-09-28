@@ -11,10 +11,6 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "sherpa-onnx-linux-x64": "1.13.6",
-    "sherpa-onnx-node": "1.13.6"
-  },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",

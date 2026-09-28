@@ -1,8 +1,13 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
-  && apt-get install --yes --no-install-recommends bzip2 ca-certificates curl xz-utils \
+  && apt-get install --yes --no-install-recommends ca-certificates ffmpeg python3.11-venv \
   && rm -rf /var/lib/apt/lists/*
+
+RUN python3.11 -m venv /opt/whisper-venv \
+  && /opt/whisper-venv/bin/pip install --no-cache-dir faster-whisper==1.2.1
+
+ENV CLIPTOOL_DOCKER=1
 
 ENV COREPACK_HOME=/usr/local/share/corepack
 

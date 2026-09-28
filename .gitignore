@@ -4,3 +4,4 @@ dist/
 *.log
 output/*
 !output/.gitkeep
+cookies.txt
